@@ -10,12 +10,16 @@ import org.jobportal.authservice.entity.UserCredential;
 import org.jobportal.authservice.repository.AuthRepository;
 import org.jobportal.authservice.security.jwt.JwtUtil;
 import org.jobportal.authservice.service.AuthService;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -26,27 +30,57 @@ public class AuthResource {
 
     private final AuthService authService;
     private final AuthRepository authRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     @Autowired
-    public AuthResource(AuthService authService, AuthRepository authRepository, JwtUtil jwtUtil) {
+    public AuthResource(AuthService authService, AuthRepository authRepository, JwtUtil jwtUtil, RabbitTemplate rabbitTemplate) {
         this.authService = authService;
         this.authRepository = authRepository;
         this.jwtUtil = jwtUtil;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserCredential>> register(@RequestBody RegisterDto registerDto) {
-        // Prevent ADMIN registration
         if (registerDto.getRole() == Role.ADMIN) {
-            throw new RuntimeException("ADMIN cannot be registered via public API");
+            throw new RuntimeException("ADMIN registration forbidden");
         }
+
         UserCredential userCredential = authService.register(registerDto);
+        Map<String, Object> notificationData = new HashMap<>();
+        notificationData.put("userEmail", userCredential.getEmail());
+        notificationData.put("type", "WELCOME");
+        notificationData.put("message", "Welcome " + registerDto.getEmail() + "! Your account has been created. You can now log in and start exploring.");
+        notificationData.put("isRead", false);
+
+        // Send to RabbitMQ
+        rabbitTemplate.convertAndSend(
+                "notification_exchange",
+                "notification_routing_key",
+                notificationData
+        );
+
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(true, "User Created", userCredential));
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<?>> login(@RequestBody LoginDto loginDto) {
         String token = authService.login(loginDto);
+
+        UserCredential userCredential = authService.getByEmail(loginDto.getEmail());
+        Map<String, Object> notificationData = new HashMap<>();
+        notificationData.put("userEmail", userCredential.getEmail());
+        notificationData.put("type", "LOGIN");
+        notificationData.put("message", "Hi " + loginDto.getEmail() + ", you have successfully logged in. If this wasn't you, please secure your account.");
+        notificationData.put("isRead", false);
+
+        // Send to RabbitMQ
+        rabbitTemplate.convertAndSend(
+                "notification_exchange",
+                "notification_routing_key",
+                notificationData
+        );
+
         return ResponseEntity.status(HttpStatus.OK).header("Set-Cookie",
                         String.format("jwt=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Lax", token, expiry)
                 ).body(new ApiResponse<>(true, "User Logged In"));
