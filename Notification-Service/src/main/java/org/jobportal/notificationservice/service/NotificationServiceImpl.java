@@ -8,6 +8,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -43,10 +45,18 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void processNotification(Notification notification) {
         Notification savedNote = repository.save(notification);
-        messagingTemplate.convertAndSend(
-                "/topic/notifications/" + notification.getUserEmail(),
-                savedNote
-        );
+
+        // Register a callback to fire only AFTER the DB commit is successful
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend(
+                        "/topic/notifications/" + savedNote.getUserEmail(),
+                        savedNote
+                );
+            }
+        });
+
         emailService.sendEmail(adminEmail, notification.getUserEmail(), notification.getMessage());
     }
 
