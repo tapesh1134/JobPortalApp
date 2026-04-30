@@ -198,4 +198,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                     .build();
         }
     }
+
+    @Override
+    public List<Invoice> getAllInvoices() {
+        return invoiceRepository.findAll();
+    }
 }

@@ -156,4 +156,11 @@ public class SubscriptionResource {
     public ResponseEntity<ApiResponse<Invoice>> getLatestInvoice(Authentication authentication) {
         return ResponseEntity.ok(new ApiResponse<>(true, "Latest invoice fetched", subscriptionService.getLatestInvoice(authentication.getName())));
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/all-invoices")
+    public ResponseEntity<ApiResponse<List<Invoice>>> getAllInvoices() {
+        List<Invoice> invoices = subscriptionService.getAllInvoices();
+        return ResponseEntity.ok(new ApiResponse<>(true, "All platform invoices fetched", invoices));
+    }
 }

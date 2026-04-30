@@ -18,4 +18,5 @@ public interface SubscriptionService {
     List<Invoice> getInvoices(String recruiterEmail);
     Invoice getLatestInvoice(String recruiterEmail);
     StripeResponseDto checkoutProducts(SubscriptionRequestDto dto, String email, SubscriptionPlan plan);
+    List<Invoice> getAllInvoices();
 }

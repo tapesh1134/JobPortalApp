@@ -88,9 +88,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String redirectUrl;
         if (isNewUser) {
-            redirectUrl = "http://localhost:5173/select-role";
+            redirectUrl = "http://localhost:8080/select-role";
         } else {
-            redirectUrl = "http://localhost:5173/dashboard";
+            redirectUrl = "http://localhost:8080/";
         }
 
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);

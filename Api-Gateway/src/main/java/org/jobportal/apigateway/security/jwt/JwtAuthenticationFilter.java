@@ -22,16 +22,13 @@ public class JwtAuthenticationFilter implements GlobalFilter {
     private final List<String> openEndpoints = List.of(
             "/auth/login",
             "/auth/register",
-            "/auth/oauth2"
+            "/auth/oauth2",
+            "/"
     );
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
-        String method = exchange.getRequest().getMethod().name();
-        if (path.equals("/history") && method.equals("POST")) {
-            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
-            return exchange.getResponse().setComplete();
-        }
+
         // Allow public endpoints
         if (isOpenEndpoint(path)) {
             return chain.filter(exchange);
