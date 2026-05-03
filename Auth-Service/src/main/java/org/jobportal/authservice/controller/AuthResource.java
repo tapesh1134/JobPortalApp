@@ -110,6 +110,40 @@ public class AuthResource {
         return ResponseEntity.ok(new ApiResponse<>(true, "Token refreshed", newToken));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<?>> forgotPassword(@RequestParam String email) {
+        String otp = authService.sendOtp(email);
+
+        Map<String, Object> notificationData = new HashMap<>();
+        notificationData.put("userEmail", email);
+        notificationData.put("type", "RESET_PASSWORD_OTP");
+        notificationData.put(
+                "message", "Your One-Time Password (OTP) is: " + otp + " This OTP is valid for 10 minutes.If you did not request a password reset, please ignore this email and your password will remain unchanged."
+        );
+        notificationData.put("isRead", false);
+
+        // Send to RabbitMQ
+        rabbitTemplate.convertAndSend("notification_exchange", "notification_routing_key", notificationData);
+        return ResponseEntity.ok(new ApiResponse<>(true, "OTP sent successfully. Valid for 10 minutes."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<?>> resetPassword(@RequestParam String email, @RequestParam String otp, @RequestParam String newPassword) {
+        authService.resetPassword(email, otp, newPassword);
+
+        Map<String, Object> notificationData = new HashMap<>();
+        notificationData.put("userEmail", email);
+        notificationData.put("type", "RESET_PASSWORD_OTP");
+        notificationData.put(
+                "message", "Your password has been reset successfully. You can now log in using your new password. If you did not make this change, please contact support immediately."
+        );
+        notificationData.put("isRead", false);
+
+        // Send to RabbitMQ
+        rabbitTemplate.convertAndSend("notification_exchange", "notification_routing_key", notificationData);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password reset successfully."));
+    }
+
     // This function to extract token from cookie
     private String extractTokenFromCookies(HttpServletRequest request) {
         if (request.getCookies() == null) {

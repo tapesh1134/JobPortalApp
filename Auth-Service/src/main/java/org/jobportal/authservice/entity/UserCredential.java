@@ -1,5 +1,6 @@
 package org.jobportal.authservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,7 @@ public class UserCredential {
     private Long userId;
     @Column(unique = true, nullable = false, length = 150)
     private String email;
+    @JsonIgnore
     private String passwordHash;
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
@@ -27,6 +29,10 @@ public class UserCredential {
     private String provider;
     @Column(nullable = false, updatable = false)
     private LocalDateTime creationDate;
+    @JsonIgnore
+    private String otp;
+    @JsonIgnore
+    private LocalDateTime expiryTimeForOtp;
 
     @PrePersist
     public void onCreate() {

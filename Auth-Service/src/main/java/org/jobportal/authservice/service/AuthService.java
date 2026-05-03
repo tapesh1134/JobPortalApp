@@ -11,4 +11,6 @@ public interface AuthService {
     boolean validateToken(String token);
     String refreshToken(String token);
     UserCredential getByEmail(String email);
+    String sendOtp(String email);
+    void resetPassword(String email, String otp, String newPassword);
 }

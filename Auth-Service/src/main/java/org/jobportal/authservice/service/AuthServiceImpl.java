@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Random;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -95,5 +96,33 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserCredential getByEmail(String email) {
         return authRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Override
+    public String sendOtp(String email) {
+        UserCredential user = authRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        String otp = generateOtp();
+        user.setOtp(bCryptPasswordEncoder.encode(otp));
+        user.setExpiryTimeForOtp(LocalDateTime.now().plusMinutes(10));
+        authRepository.save(user);
+        return otp;
+    }
+
+    @Override
+    public void resetPassword(String email, String otp, String newPassword) {
+        UserCredential user = authRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getExpiryTimeForOtp().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP expired");
+        }
+        if (!bCryptPasswordEncoder.matches(otp, user.getOtp())) {
+            throw new RuntimeException("Invalid OTP");
+        }
+        user.setPasswordHash(bCryptPasswordEncoder.encode(newPassword));
+        user.setExpiryTimeForOtp(LocalDateTime.now());
+        authRepository.save(user);
+    }
+
+    private String generateOtp() {
+        return String.valueOf(100000 + new Random().nextInt(900000));
     }
 }
