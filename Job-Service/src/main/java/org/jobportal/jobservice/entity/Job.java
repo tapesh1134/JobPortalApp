@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Job {
+public class Job implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long jobId;
@@ -31,7 +32,7 @@ public class Job {
     private Double salaryMin;
     @Column(nullable = false)
     private Double salaryMax;
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
     @Column(name = "skill", nullable = false)
     private List<String> skills;
