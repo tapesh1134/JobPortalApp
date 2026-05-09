@@ -10,6 +10,7 @@ import org.jobportal.subscriptionservice.entity.*;
 import org.jobportal.subscriptionservice.service.SubscriptionService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/subscription")
 public class SubscriptionResource {
+    @Value("${stripe.webhook.secretKey}")
+    private String endpointSecret;
+
     private final SubscriptionService subscriptionService;
     private final RabbitTemplate rabbitTemplate;
 
@@ -62,33 +66,28 @@ public class SubscriptionResource {
 
         return ResponseEntity.ok(new ApiResponse<>(true, "Stripe session created", response));
     }
-//
-//    @PostMapping("/webhook")
-//    public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
-//
-//        try {
-//            Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
-//
-//            if ("checkout.session.completed".equals(event.getType())) {
-//
-//                Session session = (Session) event.getDataObjectDeserializer()
-//                        .getObject()
-//                        .orElse(null);
-//
-//                String email = session.getMetadata().get("email");
-//                String planStr = session.getMetadata().get("plan");
-//
-//                SubscriptionPlan plan = SubscriptionPlan.valueOf(planStr);
-//
-//                subscriptionService.subscribe(email, plan); // ✅ MOVE HERE
-//            }
-//
-//            return ResponseEntity.ok("Success");
-//
-//        } catch (Exception e) {
-//            return ResponseEntity.status(400).body("Webhook Error");
-//        }
-//    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
+
+        try {
+            Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+            if ("checkout.session.completed".equals(event.getType())) {
+                Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
+                String email = session.getMetadata().get("email");
+                String planStr = session.getMetadata().get("plan");
+                SubscriptionPlan plan = SubscriptionPlan.valueOf(planStr);
+
+                Subscription subscription = subscriptionService.subscribe(email, plan);
+                subscriptionService.generateInvoice(subscription.getSubscriptionId(),session.getId());
+            }
+
+            return ResponseEntity.ok("Success");
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Webhook Error");
+        }
+    }
 
     @PreAuthorize("hasRole('RECRUITER')")
     @PutMapping("/{subscriptionId}/cancel")

@@ -103,12 +103,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     public Invoice generateInvoice(Long subscriptionId, String sessionId) {
-
-        // ✅ prevent duplicate invoice
+        //  prevent duplicate invoice
         if (invoiceRepository.existsByStripeSessionId(sessionId)) {
             return invoiceRepository.findByStripeSessionId(sessionId).get();
         }
-
         Subscription subscription = getBySubscriptionId(subscriptionId);
 
         Invoice invoice = Invoice.builder()
@@ -118,9 +116,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .paymentDate(LocalDateTime.now())
                 .paymentMode(PaymentMode.CARD)
                 .transactionId(UUID.randomUUID().toString())
-                .stripeSessionId(sessionId) // ✅ important
+                .stripeSessionId(sessionId)
                 .build();
-
         return invoiceRepository.save(invoice);
     }
 
@@ -135,67 +132,37 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public StripeResponseDto checkoutProducts(
-            SubscriptionRequestDto dto,
-            String email,
-            SubscriptionPlan plan) {
-
+    public StripeResponseDto checkoutProducts(SubscriptionRequestDto dto, String email, SubscriptionPlan plan) {
         Stripe.apiKey = secretKey;
-
         try {
-            SessionCreateParams params =
-                    SessionCreateParams.builder()
-                            // ✅ One-time payment (correct for dynamic pricing)
+            SessionCreateParams params = SessionCreateParams.builder()
+                            // One-time payment (correct for dynamic pricing)
                             .setMode(SessionCreateParams.Mode.PAYMENT)
-
                             .setSuccessUrl("http://localhost:5173")
                             .setCancelUrl("http://localhost:5173/")
 
-                            // 🔥 Important: link payment to user + plan
+                            // Important: link payment to user + plan
                             .putMetadata("email", email)
                             .putMetadata("plan", plan.name())
-
-                            .addLineItem(
-                                    SessionCreateParams.LineItem.builder()
+                            .addLineItem(SessionCreateParams.LineItem.builder()
                                             .setQuantity(dto.getQuantity() != null ? dto.getQuantity() : 1L)
-                                            .setPriceData(
-                                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                                             .setCurrency(dto.getCurrency() != null
                                                                     ? dto.getCurrency().toLowerCase()
                                                                     : "inr")
                                                             .setUnitAmount(dto.getAmount()) // already in paise
-                                                            .setProductData(
-                                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                                            .setName(dto.getName())
-                                                                            .build()
-                                                            )
-                                                            .build()
-                                            )
-                                            .build()
-                            )
-                            .build();
-
-            // ✅ FIX: NO CASTING (this was your bug)
+                                                            .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                                            .setName(dto.getName()).build()
+                                                            ).build()
+                                            ).build()
+                            ).build();
             Session session = Session.create(params);
-            Subscription subscription = subscribe(email, plan);
-            generateInvoice(subscription.getSubscriptionId(), session.getId());
-            return StripeResponseDto.builder()
-                    .status("SUCCESS")
-                    .message("Payment session created successfully")
-                    .sessionId(session.getId())
-                    .sessionUrl(session.getUrl())
-                    .build();
-
+//            Subscription subscription = subscribe(email, plan);
+//            generateInvoice(subscription.getSubscriptionId(), session.getId());
+            return StripeResponseDto.builder().status("SUCCESS").message("Payment session created successfully").sessionId(session.getId()).sessionUrl(session.getUrl()).build();
         } catch (StripeException e) {
             e.printStackTrace();
-
-
-            return StripeResponseDto.builder()
-                    .status("FAILED")
-                    .message("Error creating payment session: " + e.getMessage())
-                    .sessionId(null)
-                    .sessionUrl(null)
-                    .build();
+            return StripeResponseDto.builder().status("FAILED").message("Error creating payment session: " + e.getMessage()).sessionId(null).sessionUrl(null).build();
         }
     }
 
