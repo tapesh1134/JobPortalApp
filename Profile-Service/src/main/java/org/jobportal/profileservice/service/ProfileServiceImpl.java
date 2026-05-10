@@ -7,6 +7,8 @@ import org.jobportal.profileservice.dto.UserProfileDto;
 import org.jobportal.profileservice.entity.*;
 import org.jobportal.profileservice.repository.ProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -45,7 +47,9 @@ public class ProfileServiceImpl implements ProfileService {
                 .resumeUrl(dto.getResumeUrl())
                 .build();
 
-        return repository.save(candidate);
+        UserProfile savedProfile = repository.save(candidate);
+        clearAllProfileCaches();
+        return savedProfile;
     }
 
     @Override
@@ -71,7 +75,9 @@ public class ProfileServiceImpl implements ProfileService {
                 .website(dto.getWebsite())
                 .build();
 
-        return repository.save(recruiter);
+        UserProfile savedProfile = repository.save(recruiter);
+        clearAllProfileCaches();
+        return savedProfile;
     }
 
     @Override
@@ -98,7 +104,10 @@ public class ProfileServiceImpl implements ProfileService {
         if (dto.getCompanySize() != null) existing.setCompanySize(dto.getCompanySize());
         if (dto.getIndustry() != null) existing.setIndustry(dto.getIndustry());
         if (dto.getWebsite() != null) existing.setWebsite(dto.getWebsite());
-        return repository.save(existing);
+
+        UserProfile updatedProfile = repository.save(existing);
+        clearAllProfileCaches();
+        return updatedProfile;
     }
 
     @Override
@@ -126,32 +135,44 @@ public class ProfileServiceImpl implements ProfileService {
         if (dto.getExperience() != null) existing.setExperience(dto.getExperience());
         if (dto.getResumeUrl() != null) existing.setResumeUrl(dto.getResumeUrl());
 
-        return repository.save(existing);
+        UserProfile updatedProfile = repository.save(existing);
+        clearAllProfileCaches();
+        return updatedProfile;
     }
 
     @Override
     public void deleteProfile(Long id) {
         if (!repository.existsById(id)) throw new RuntimeException("Profile not found with id: " + id);
         repository.deleteById(id);
+        clearAllProfileCaches();
     }
 
     @Override
+    @Cacheable(value = "profileById", key = "#id")
     public UserProfile getProfileById(Long id) {
         return repository.findByProfileId(id).orElseThrow(() -> new RuntimeException("Profile not found with id: " + id));
     }
 
     @Override
+    @Cacheable(value = "profileByEmail", key = "#email")
     public UserProfile getProfileByEmail(String email) {
         return repository.findByEmail(email).orElseThrow(() -> new RuntimeException("Profile not found with email: " + email));
     }
 
     @Override
+    @Cacheable(value = "allProfiles")
     public List<UserProfile> getAllProfiles() {
         return repository.findAll();
     }
 
     @Override
+    @Cacheable(value = "profilesByRole", key = "#role")
     public List<UserProfile> getProfilesByRole(Role role) {
         return repository.findByRole(role);
+    }
+
+    @CacheEvict(value = {"profileById", "profileByEmail", "allProfiles", "profilesByRole"}, allEntries = true)
+    public void clearAllProfileCaches() {
+        System.out.println("All profile caches cleared");
     }
 }

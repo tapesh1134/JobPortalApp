@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @Data
 @SuperBuilder
-public class CandidateProfile extends UserProfile{
+public class CandidateProfile extends UserProfile implements Serializable {
     @Past(message = "DOB must be in the past")
     private LocalDate dob;
     @Column(nullable = false)

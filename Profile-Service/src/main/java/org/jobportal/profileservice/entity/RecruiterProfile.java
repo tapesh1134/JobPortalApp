@@ -7,12 +7,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.io.Serializable;
+
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-public class RecruiterProfile extends  UserProfile{
+public class RecruiterProfile extends  UserProfile implements Serializable {
     @Column(nullable = false, length = 150)
     private String companyName;
     @Column(nullable = false)
