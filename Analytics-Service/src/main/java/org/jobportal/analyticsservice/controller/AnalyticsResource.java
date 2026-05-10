@@ -20,9 +20,9 @@ public class AnalyticsResource {
     }
 
     // Recruiter Analytics
-    @GetMapping("/recruiter/{id}")
-    public ResponseEntity<ApiResponse<Analytics>> getRecruiterAnalytics(@PathVariable String id) {
-        Analytics analytics = analyticsService.getAnalytics(id);
+    @GetMapping("/recruiter/{email}")
+    public ResponseEntity<ApiResponse<Analytics>> getRecruiterAnalytics(@PathVariable String email) {
+        Analytics analytics = analyticsService.getAnalytics(email);
         return ResponseEntity.status(HttpStatus.OK).body(new ApiResponse<>(true, "Recruiter analytics fetched successfully", analytics));
     }
 

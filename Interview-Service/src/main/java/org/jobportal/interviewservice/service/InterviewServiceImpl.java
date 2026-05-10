@@ -5,6 +5,8 @@ import org.jobportal.interviewservice.entity.Interview;
 import org.jobportal.interviewservice.entity.InterviewStatus;
 import org.jobportal.interviewservice.repository.InterviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +37,8 @@ public class InterviewServiceImpl implements InterviewService {
                 .status(InterviewStatus.SCHEDULED)
                 .notes(dto.getNotes())
                 .build();
+
+        clearAllInterviewCaches();
         return interviewRepository.save(interview);
     }
 
@@ -46,6 +50,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
         interview.setStatus(InterviewStatus.CONFIRMED);
         interviewRepository.save(interview);
+        clearAllInterviewCaches();
     }
 
     @Override
@@ -56,6 +61,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
         interview.setStatus(InterviewStatus.RESCHEDULED);
         interview.setScheduledAt(newTIme);
+        clearAllInterviewCaches();
         return interviewRepository.save(interview);
     }
 
@@ -67,6 +73,7 @@ public class InterviewServiceImpl implements InterviewService {
         }
         interview.setStatus(InterviewStatus.CANCELLED);
         interviewRepository.save(interview);
+        clearAllInterviewCaches();
     }
 
     @Override
@@ -77,30 +84,41 @@ public class InterviewServiceImpl implements InterviewService {
         }
         interview.setStatus(InterviewStatus.COMPLETED);
         interviewRepository.save(interview);
+        clearAllInterviewCaches();
     }
 
     @Override
+    @Cacheable(value = "interviewsByApplicationId", key = "#applicationId")
     public List<Interview> getByApplicationId(Long applicationId) {
         return interviewRepository.findByApplicationId(applicationId).orElse(List.of());
     }
 
     @Override
+    @Cacheable(value = "interviewsByStatus", key = "#status")
     public List<Interview> getByStatus(InterviewStatus status) {
         return interviewRepository.findByStatus(status).orElse(List.of());
     }
 
     @Override
+    @Cacheable(value = "interviewById", key = "#interviewId")
     public Interview getByInterviewId(Long interviewId) {
         return interviewRepository.findById(interviewId).orElseThrow(() -> new RuntimeException("No interview found with id: " + interviewId));
     }
 
     @Override
+    @Cacheable(value = "interviewsByCandidateEmail", key = "#candidateEmail")
     public List<Interview> getByCandidateEmail(String candidateEmail) {
         return interviewRepository.findByCandidateEmail(candidateEmail).orElse(List.of());
     }
 
     @Override
+    @Cacheable(value = "interviewsByRecruiterEmail", key = "#recruiterEmail")
     public List<Interview> getByRecruiterEmail(String recruiterEmail) {
         return interviewRepository.findByRecruiterEmail(recruiterEmail).orElse(List.of());
+    }
+
+    @CacheEvict(value = {"interviewsByApplicationId", "interviewsByStatus", "interviewById", "interviewsByCandidateEmail", "interviewsByRecruiterEmail"}, allEntries = true)
+    public void clearAllInterviewCaches() {
+        System.out.println("All interview caches cleared");
     }
 }

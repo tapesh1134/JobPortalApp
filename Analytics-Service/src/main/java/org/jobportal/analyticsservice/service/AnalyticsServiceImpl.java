@@ -6,6 +6,8 @@ import org.jobportal.analyticsservice.entity.Job;
 import org.jobportal.analyticsservice.entity.Analytics;
 import org.jobportal.analyticsservice.feign.ApplicationClient;
 import org.jobportal.analyticsservice.feign.JobClient;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +23,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         this.applicationClient = applicationClient;
     }
 
+    @Cacheable(value = "recruiterAnalytics", key = "#recruiterEmail")
     public Analytics getAnalytics(String recruiterEmail) {
         List<Job> allJobs = jobClient.getJobs().getData();
         List<Job> recruiterJobs = allJobs.stream().filter(job -> job.getPostedBy().equals(recruiterEmail)).toList();
@@ -42,6 +45,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return new Analytics(totalJobs, totalApplications, shortlisted, offered, rejected);
     }
 
+    @Cacheable(value = "adminAnalytics")
     public Analytics getAdminAnalytics() {
         List<Job> jobs = jobClient.getJobs().getData();
         System.out.println(jobs);

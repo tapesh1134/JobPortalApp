@@ -5,6 +5,9 @@ import org.jobportal.applicationservice.entity.Application;
 import org.jobportal.applicationservice.entity.ApplicationStatus;
 import org.jobportal.applicationservice.repository.ApplicationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +15,16 @@ import java.util.List;
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
     private final ApplicationRepository applicationRepository;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public ApplicationServiceImpl(ApplicationRepository applicationRepository) {
+    public ApplicationServiceImpl(ApplicationRepository applicationRepository, CacheManager cacheManager) {
         this.applicationRepository = applicationRepository;
+        this.cacheManager = cacheManager;
     }
 
     @Override
+    @Cacheable(value = "application", key = "#candidateEmail")
     public Application submitApplication(String candidateEmail, ApplicationDto dto) {
         if (dto.getJobId() == null) {
             throw new IllegalArgumentException("Job ID is required");
@@ -42,11 +48,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @Cacheable(value = "allApplications", key = "#candidateEmail")
     public List<Application> getByCandidateEmail(String candidateEmail) {
         return applicationRepository.findByCandidateEmail(candidateEmail).orElseThrow(() -> new RuntimeException("Applications not found on candidateEmail: " + candidateEmail));
     }
 
     @Override
+    @Cacheable(value = "applicationsByJobId", key = "#jobId")
     public List<Application> getByJobId(Long jobId) {
         return applicationRepository.findByJobId(jobId).orElseThrow(() -> new RuntimeException("Application not found with jobId: " + jobId));
     }
@@ -84,6 +92,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         application.setStatus(newStatus);
         applicationRepository.save(application);
+        clearAllApplicationCaches();
     }
 
     @Override
@@ -107,20 +116,29 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
         application.setStatus(ApplicationStatus.WITHDRAWN);
         applicationRepository.save(application);
+        clearAllApplicationCaches();
     }
 
     @Override
+    @Cacheable(value = "applicationById", key = "#id")
     public Application getApplicationById(Long id) {
         return applicationRepository.findById(id).orElseThrow(() -> new RuntimeException("Application not found with id: " + id));
     }
 
     @Override
+    @Cacheable(value = "applicationsByStatus", key = "#status")
     public List<Application> getApplicationByStatus(ApplicationStatus status) {
         return applicationRepository.findByStatus(status).orElseThrow(() -> new RuntimeException("Application not found with status: " + status));
     }
 
     @Override
+    @Cacheable(value = "applicationCount", key = "#id")
     public int countByJobId(Long id) {
         return applicationRepository.countByJobId(id);
+    }
+
+    @CacheEvict(value = {"allApplications", "applicationsByJobId", "applicationById", "applicationsByStatus", "applicationCount"}, allEntries = true)
+    public void clearAllApplicationCaches() {
+        System.out.println("All application caches cleared");
     }
 }
