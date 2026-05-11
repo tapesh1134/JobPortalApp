@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +32,11 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Skip public routes
         String path = request.getRequestURI();
-        if (path.startsWith("/auth")|| path.startsWith("/oauth2")) {
+        if (path.equals("/auth/login") ||
+                path.equals("/auth/register") ||
+                path.equals("/auth/forgot-password") ||
+                path.equals("/auth/reset-password") ||
+                path.startsWith("/oauth2")) {
             filterChain.doFilter(request, response);
             return;
         }
