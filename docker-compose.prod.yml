@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -14,7 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,13 +24,12 @@ services:
   redis:
     image: redis:alpine
     container_name: redis
-    restart: always
     ports:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
     networks:
       - jobportal-network
@@ -38,25 +37,23 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
-    restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
     networks:
       - jobportal-network
 
   eureka-server:
-    image: tapesh/eureka-server:latest
+    image: tapesh134/eureka-server:latest
     container_name: eureka-server
-    restart: always
     ports:
       - "8761:8761"
     environment:
@@ -70,182 +67,8 @@ services:
     networks:
       - jobportal-network
 
-  auth-service:
-    image: tapesh/auth-service:latest
-    container_name: auth-service
-    ports:
-      - "8081:8081"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      rabbitmq: { condition: service_healthy }
-      redis: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_auth
-      - SPRING_REDIS_HOST=redis
-      - SPRING_RABBITMQ_HOST=rabbitmq
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  profile-service:
-    image: tapesh/profile-service:latest
-    container_name: profile-service
-    ports:
-      - "8082:8082"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_profile
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  job-service:
-    image: tapesh/job-service:latest
-    container_name: job-service
-    ports:
-      - "8083:8083"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_jobpost
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  application-service:
-    image: tapesh/application-service:latest
-    container_name: application-service
-    ports:
-      - "8084:8084"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_application
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  interview-service:
-    image: tapesh/interview-service:latest
-    container_name: interview-service
-    ports:
-      - "8085:8085"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_interview
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  subscription-service:
-    image: tapesh/subscription-service:latest
-    container_name: subscription-service
-    ports:
-      - "8086:8086"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_subscription
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  notification-service:
-    image: tapesh/notification-service:latest
-    container_name: notification-service
-    ports:
-      - "8087:8087"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      rabbitmq: { condition: service_healthy }
-      redis: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_notification
-      - SPRING_RABBITMQ_HOST=rabbitmq
-      - SPRING_REDIS_HOST=redis
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  analytics-service:
-    image: tapesh/analytics-service:latest
-    container_name: analytics-service
-    ports:
-      - "8088:8088"
-    restart: always
-    depends_on:
-      postgres: { condition: service_healthy }
-      eureka-server: { condition: service_healthy }
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_analytics
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - JAVA_TOOL_OPTIONS=-Xmx256m
-    networks:
-      - jobportal-network
-
-  jobportal-web:
-    image: tapesh/jobportal-web:latest
-    container_name: jobportal-web
-    ports:
-      - "8089:8089"
-    restart: always
-    depends_on:
-      eureka-server: { condition: service_healthy }
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    networks:
-      - jobportal-network
-
   api-gateway:
-    image: tapesh/api-gateway:latest
+    image: tapesh134/api-gateway:latest
     container_name: api-gateway
     ports:
       - "8080:8080"
@@ -258,6 +81,216 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  auth-service:
+    image: tapesh134/auth-service:latest
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=dummy-id
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=dummy-secret
+    networks:
+      - jobportal-network
+
+  profile-service:
+    image: tapesh134/profile-service:latest
+    container_name: profile-service
+    ports:
+      - "8082:8082"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_profile
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  job-service:
+    image: tapesh134/job-service:latest
+    container_name: job-service
+    ports:
+      - "8083:8083"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_jobpost
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  application-service:
+    image: tapesh134/application-service:latest
+    container_name: application-service
+    ports:
+      - "8084:8084"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_application
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  interview-service:
+    image: tapesh134/interview-service:latest
+    container_name: interview-service
+    ports:
+      - "8085:8085"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_interview
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  subscription-service:
+    image: tapesh134/subscription-service:latest
+    container_name: subscription-service
+    ports:
+      - "8086:8086"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_subscription
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  notification-service:
+    image: tapesh134/notification-service:latest
+    container_name: notification-service
+    ports:
+      - "8087:8087"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_notification
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  analytics-service:
+    image: tapesh134/analytics-service:latest
+    container_name: analytics-service
+    ports:
+      - "8088:8088"
+    restart: on-failure
+    depends_on:
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_healthy }
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/job_portal_analytics
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=0000
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xmx256m
+    networks:
+      - jobportal-network
+
+  jobportal-web:
+    image: tapesh134/jobportal-web:latest
+    container_name: jobportal-web
+    ports:
+      - "8089:8089"
+    restart: always
+    depends_on:
+      eureka-server: { condition: service_healthy }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - jobportal-network
 
