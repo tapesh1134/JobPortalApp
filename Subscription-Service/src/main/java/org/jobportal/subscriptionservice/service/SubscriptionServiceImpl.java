@@ -138,8 +138,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             SessionCreateParams params = SessionCreateParams.builder()
                             // One-time payment (correct for dynamic pricing)
                             .setMode(SessionCreateParams.Mode.PAYMENT)
-                            .setSuccessUrl("http://localhost:5173")
-                            .setCancelUrl("http://localhost:5173/")
+                            .setSuccessUrl("http://localhost:8080")
+                            .setCancelUrl("http://localhost:8080/")
 
                             // Important: link payment to user + plan
                             .putMetadata("email", email)
@@ -157,8 +157,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                                             ).build()
                             ).build();
             Session session = Session.create(params);
-//            Subscription subscription = subscribe(email, plan);
-//            generateInvoice(subscription.getSubscriptionId(), session.getId());
+            Subscription subscription = subscribe(email, plan);
+            generateInvoice(subscription.getSubscriptionId(), session.getId());
             return StripeResponseDto.builder().status("SUCCESS").message("Payment session created successfully").sessionId(session.getId()).sessionUrl(session.getUrl()).build();
         } catch (StripeException e) {
             e.printStackTrace();
