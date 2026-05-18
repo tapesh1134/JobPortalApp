@@ -19,14 +19,11 @@ pipeline {
             steps {
                 script {
                     echo "Running SonarQube Analysis..."
-
-                    sh """
-                    mvn clean verify sonar:sonar \
-                    -Dsonar.projectKey=job-portal \
-                    -Dsonar.projectName=job-portal \
-                    -Dsonar.host.url=http://host.docker.internal:9000 \
-                    -Dsonar.login=${SONAR_TOKEN}
-                    """
+                    sh 'mvn clean verify sonar:sonar \
+                        -Dsonar.projectKey=job-portal \
+                        -Dsonar.projectName=job-portal \
+                        -Dsonar.host.url=http://host.docker.internal:9000 \
+                        -Dsonar.login=$SONAR_TOKEN'
                 }
             }
         }
