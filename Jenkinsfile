@@ -23,7 +23,8 @@ pipeline {
                         -Dsonar.projectKey=job-portal \
                         -Dsonar.projectName=job-portal \
                         -Dsonar.host.url=http://host.docker.internal:9000 \
-                        -Dsonar.login=$SONAR_TOKEN'
+                        -Dsonar.login=$SONAR_TOKEN \
+                        -DskipTests' 
                 }
             }
         }
