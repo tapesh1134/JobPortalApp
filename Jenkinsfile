@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_USERNAME = 'tapesh134'
         DOCKER_CREDS = credentials('dockerhub-creds')
+        SONAR_TOKEN = credentials('sonar_token')
     }
 
     stages {
@@ -11,6 +12,22 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    echo "Running SonarQube Analysis..."
+
+                    sh """
+                    mvn clean verify sonar:sonar \
+                    -Dsonar.projectKey=job-portal \
+                    -Dsonar.projectName=job-portal \
+                    -Dsonar.host.url=http://host.docker.internal:9000 \
+                    -Dsonar.login=${SONAR_TOKEN_PSW}
+                    """
+                }
             }
         }
 
@@ -61,11 +78,8 @@ pipeline {
     }
 
     post {
-
         always {
-
             sh 'docker logout || true'
-
             cleanWs()
         }
 
@@ -87,27 +101,22 @@ def buildAndPush(String folderName, String imageName) {
 
     dir("${folderName}") {
 
-        // Build JAR first
         sh '''
             mvn clean package -DskipTests
         '''
 
-        // Docker Login
         sh '''
             echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
         '''
 
-        // Build Docker Image
         sh """
             docker build -t ${DOCKERHUB_USERNAME}/${imageName}:latest .
         """
 
-        // Push Docker Image
         sh """
             docker push ${DOCKERHUB_USERNAME}/${imageName}:latest
         """
 
-        // Remove Local Image
         sh """
             docker rmi ${DOCKERHUB_USERNAME}/${imageName}:latest || true
         """
